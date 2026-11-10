@@ -1,2 +1,68 @@
-# Y700-5th-Boost
-为联想拯救者 Y700 五代（TB323FU）GPU 解锁1200MHz 频率 + 温度墙后移（相当于去温控了）｜KernelSU / Magisk 模块
+Y700 5th Boost
+> 联想拯救者 Y700 五代（TB323FU）的 Root 模块：解除游戏 GPU 的 1000MHz 上限，并把 GPU 温度墙后移 11~14℃。
+这是什么
+Y700 五代在「野兽 / 超分 / 插帧」模式下，`/system/etc/gameperfconfig.xml` 会给每个游戏写一个 GPU 频率区间。很多游戏被写成 `7_3`（上限 1000MHz），于是 GPU 最高只能跑到 1000MHz —— 而硬件上限是 1200MHz。
+这个模块做两件事：
+解开 GPU 上限：45 个游戏条目里，四种高性能模式（野兽 / SR 野兽 / FI 野兽 / SR-FI 野兽）的 GPU 区间统一放宽为 `17_0`（160MHz ~ 1200MHz 全区间）。
+温度墙后移：`/vendor/etc/thermal-engine_gpu_*.conf` 的触发温度整体后移 11~14℃。
+不改 CPU、不改调度器、不改内核温控。
+适用环境
+机型：Legion Y700 五代（TB323FU，SM8850P）
+系统：Android 16 / ZUXOS 2.0.12.088（GameOptPolicy `20260602`）
+Root：KernelSU 3.3.1 实测通过；Magisk 未实测
+其他固件：带 OTA 保护，固件版本不匹配时自动跳过，保持原厂行为
+实测数据
+鸣潮、野兽模式、150 秒连续采样。采样期间 `max_pwrlevel` 恒为 0，即没有任何频率上限：
+1200 MHz：驻留 9.0%
+1100 MHz：驻留 21.9%
+1050 MHz：驻留 25.1%
+1000 MHz：驻留 25.6%
+902 MHz 及以下：驻留 18.4%
+1050MHz 以上合计 56.0%，平均频率 1029MHz。原厂同场景下 1000MHz 是硬天花板。
+一个反直觉的发现
+模块的 GPU 区间是 `17_0`，下限一直放到 160MHz。同一局游戏内做背靠背 A/B（只改 `min_pwrlevel`）：
+下限 646MHz：1200MHz 驻留 0%，≥1050MHz 驻留 7.5%，平均 881MHz，GPU 固件热降频触发率 35%
+下限 160MHz：1200MHz 驻留 10.5%，≥1050MHz 驻留 48.2%，平均 991MHz，热降频 0%
+原因是下限抬高后 GPU 闲时也降不下去，结温长期挂在高位，反而触发芯片固件的热管理把频率压到 1000/902/826 —— 想让它凉，结果更热更慢。
+安装
+确认设备已 Root（KernelSU / Magisk）
+用 KernelSU 管理器刷入 `Y700_5th_Boost_v1.10.zip`
+重启
+首次开机会自动把原厂文件备份到 `/data/adb/y700g5_backup/`。
+刷完后可以这样验证：
+```sh
+su -c "grep -E '^version' /data/adb/modules/y700g5_gpu1200/module.prop"
+su -c "cat /data/adb/modules/y700g5_gpu1200/mount.log"
+```
+进入游戏后：
+```sh
+su -c "cat /sys/class/kgsl/kgsl-3d0/max_pwrlevel"   # 期望 0
+su -c "cat /sys/class/kgsl/kgsl-3d0/min_pwrlevel"   # 期望 17
+su -c "cat /sys/class/kgsl/kgsl-3d0/gpuclk"         # 能看到 1050/1100/1200
+```
+卸载
+在管理器里卸载模块，然后重启。
+KernelSU 3.3.1 有一个顺序 bug，卸载时不会执行模块自带的 `uninstall.sh`，游戏助手里的配置副本可能残留。卸载后可以执行：
+```sh
+su
+sh /sdcard/Y700G5_工具/tools.sh
+```
+选 `3` 清理残留。
+系统更新（OTA）后
+模块在每次开机的 `post-fs-data` 阶段自动判断：
+固件没变：直接使用
+固件变了：从新固件重新生成（旧原厂文件另存），并把结果写回模块文件
+XML 结构对不上：跳过，保持原厂行为
+详见 Y700_5th_Boost_说明.md。
+已知限制
+只对四种高性能模式生效：均衡（Balance）和省电（PowerSave）完全没动
+温度墙是全局的（不区分游戏），只是阈值推到 55℃ 以上，日常使用到不了
+CPU 侧完全没动：机身 50.5℃ 时厂商温控会把 CPU 砍到 384MHz，这是另一个瓶颈，模块没有触碰
+游戏助手副本要开机 45 秒后才同步：开机后立刻进游戏可能还是旧配置
+只测过 TB323FU + ZUXOS 2.0.12.088
+`uninstall.sh` 在 KernelSU 3.3.1 上不会被执行（见上文）
+文件说明
+`Y700_5th_Boost_v1.10.zip` —— 模块安装包（KernelSU / Magisk 刷入）
+`Y700_5th_Boost_说明.md` —— 完整说明：原理、实测数据、OTA 恢复流程、变更记录
+免责声明
+本模块会修改系统配置文件，存在导致设备异常的可能。请自行评估
