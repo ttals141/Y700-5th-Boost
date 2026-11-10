@@ -16,8 +16,8 @@ Y700 五代在「野兽 / 超分 / 插帧」模式下，`/system/etc/gameperfcon
 ## 适用环境
 
 - **机型**：Legion Y700 五代（TB323FU，SM8850P）
-- **系统**：Android 16 / ZUXOS 2.0.12.088（GameOptPolicy `20260602`）
-- **Root**：KernelSU 3.3.1 实测通过；Magisk 未实测
+- **系统**： ZUXOS
+- **Root**：KernelSU / Magisk 
 - **其他固件**：带 OTA 保护，固件版本不匹配时自动跳过，保持原厂行为
 
 ## 实测数据
